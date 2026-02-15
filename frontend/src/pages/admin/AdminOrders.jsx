@@ -53,9 +53,9 @@ const AdminOrders = () => {
         ...(filters.to_date && { to_date: filters.to_date })
       });
 
-      const response = await api.get(`/orders/admin?${params}`);
-      setOrders(response.data.orders);
-      setPagination(response.data.pagination);
+      const response = await api.get(`/admin/orders?${params}`);
+      setOrders(response.data.orders || []);
+      setPagination((prev) => ({ ...prev, total: (response.data.orders || []).length, pages: 1 }));
     } catch (error) {
       toast.error('Failed to fetch orders');
     } finally {
@@ -65,7 +65,14 @@ const AdminOrders = () => {
 
   const handleStatusUpdate = async (orderId, statusData) => {
     try {
-      await api.put(`/orders/admin/${orderId}/status`, statusData);
+      const statusMap = {
+        pending_payment: 'CREATED',
+        processing: 'PLACED',
+        shipped: 'SHIPPED',
+        delivered: 'DELIVERED',
+      };
+      const normalizedStatus = statusMap[statusData.status] || statusData.order_status || 'PLACED';
+      await api.patch(`/admin/orders/${orderId}`, { order_status: normalizedStatus });
       toast.success('Order status updated successfully');
       setShowStatusModal(false);
       fetchOrders();
@@ -83,13 +90,14 @@ const AdminOrders = () => {
       'delivered': { color: 'bg-green-100 text-green-800', icon: CheckCircle },
       'cancelled': { color: 'bg-red-100 text-red-800', icon: XCircle }
     };
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', icon: Package };
+    const normalized = (status || '').toLowerCase();
+    const config = statusConfig[normalized] || { color: 'bg-gray-100 text-gray-800', icon: Package };
     const Icon = config.icon;
     
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         <Icon className="h-3 w-3" />
-        {status.replace(/_/g, ' ')}
+        {(status || '').toString().replace(/_/g, ' ')}
       </span>
     );
   };

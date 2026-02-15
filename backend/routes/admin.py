@@ -265,3 +265,38 @@ async def update_variant_stock(
         raise HTTPException(404, "Variant not found")
 
     return {"in_stock": in_stock}
+
+
+# ===================== ORDERS =====================
+@router.get('/orders')
+async def list_admin_orders(
+    authorization: str = Header(None),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    await require_admin_user(authorization, db)
+    orders = await db.orders.find({}, {'_id': 0}).sort('created_at', -1).to_list(500)
+    return {'orders': orders}
+
+
+@router.patch('/orders/{order_id}')
+async def patch_admin_order_status(
+    order_id: str,
+    payload: dict,
+    authorization: str = Header(None),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    await require_admin_user(authorization, db)
+    new_status = payload.get('order_status')
+    allowed = {'CREATED', 'PLACED', 'SHIPPED', 'DELIVERED'}
+    if new_status not in allowed:
+        raise HTTPException(status_code=400, detail={'message': 'Invalid order_status', 'allowed': sorted(list(allowed))})
+
+    result = await db.orders.update_one(
+        {'id': order_id},
+        {'$set': {'order_status': new_status, 'updated_at': datetime.now(timezone.utc).isoformat()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail='Order not found')
+
+    order = await db.orders.find_one({'id': order_id}, {'_id': 0})
+    return {'success': True, 'order': order}
