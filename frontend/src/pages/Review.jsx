@@ -304,71 +304,31 @@ const Review = () => {
     setProcessing(true);
 
     try {
-      const orderData = {
-        items: cart.map(item => ({
-          variant_id: item.variant_id,
-          quantity: item.quantity
-        })),
-        address_id: selectedAddress.id,
-        coupon_code: appliedCoupon?.code || null,
-        payment_method: paymentMethod
-      };
+      const response = await api.post('/orders/initiate', {
+        payment_method: paymentMethod,
+        coupon_code: appliedCoupon?.code || null
+      });
 
-      const response = await api.post('/orders/create', orderData);
+      const { order_id, checkout_url } = response.data;
 
       if (paymentMethod === 'COD') {
         toast.success('Order placed successfully!');
         clearCart();
-        navigate(`/order-success/${response.data.order_id}`);
+        navigate(`/order-success/${order_id}`);
       } else {
-        const { razorpay_order_id, amount, order_id, order_number } = response.data;
-        
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
-          const options = {
-            key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-            amount: amount * 100,
-            currency: 'INR',
-            name: 'GWAL SPICES',
-            description: `Order #${order_number}`,
-            order_id: razorpay_order_id,
-            handler: async function (razorpayResponse) {
-              try {
-                await api.post('/orders/verify-payment', {
-                  order_id: order_id,
-                  razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                  razorpay_signature: razorpayResponse.razorpay_signature
-                });
-                clearCart();
-                navigate(`/order-success/${order_id}`);
-                toast.success('Payment successful! Order confirmed.');
-              } catch (error) {
-                console.error('Payment verification failed:', error);
-                toast.error('Payment verification failed');
-                navigate(`/payment-failed/${order_id}`);
-              }
-            },
-            prefill: {
-              name: selectedAddress.name,
-              contact: selectedAddress.phone,
-              email: user?.email
-            },
-            theme: {
-              color: '#D97706'
-            },
-            modal: {
-              ondismiss: function() {
-                setProcessing(false);
-                toast.info('Payment cancelled');
-              }
-            }
-          };
+        if (!checkout_url) {
+          toast.error('Payment checkout URL is missing.');
+          navigate(`/payment-failed/${order_id}`);
+          return;
+        }
 
-          const razorpay = new window.Razorpay(options);
-          razorpay.open();
-        };
-        document.body.appendChild(script);
+        clearCart();
+        navigate('/gokwik-checkout', {
+          state: {
+            orderId: order_id,
+            checkoutUrl: checkout_url,
+          },
+        });
       }
     } catch (error) {
       console.error('Order creation failed:', error);

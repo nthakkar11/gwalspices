@@ -1,5 +1,5 @@
-from fastapi import HTTPException, Header, Depends
-import jwt
+from fastapi import HTTPException, Header, Depends, status
+from jose import jwt, JWTError, ExpiredSignatureError
 import os
 import logging
 
@@ -9,89 +9,70 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
 ALGORITHM = "HS256"
 
 
-# ✅ Database dependency (same pattern as products.py)
 async def get_db():
     from db import db
     return db
 
 
-# ✅ Get current authenticated user
 async def get_current_user(
-    authorization: str = Header(None),
-    db = Depends(get_db)   # 🚀 Proper dependency injection (NO type hint)
+    authorization: str = Header(default=None),
+    db=Depends(get_db),
 ):
-    """Get current user from JWT token"""
+    """Resolve the authenticated user from a Bearer JWT token."""
 
     if not authorization:
-        logger.error("❌ No authorization header")
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
-        # Extract token from Bearer scheme
-        scheme, token = authorization.split()
-
-        if scheme.lower() != "bearer":
-            logger.error(f"❌ Invalid auth scheme: {scheme}")
+        parts = authorization.strip().split(" ", 1)
+        if len(parts) != 2:
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header format. Expected 'Bearer <token>'.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        scheme, token = parts
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication scheme",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Decode JWT
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("user_id")
-
         if not user_id:
-            logger.error("❌ No user_id in token")
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-        # Fetch user from DB
-        user = await db.users.find_one(
-            {"id": user_id},
-            {"_id": 0, "password": 0}
-        )
-
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0, "password": 0})
         if not user:
-            logger.error(f"❌ User not found: {user_id}")
-            raise HTTPException(status_code=401, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-        logger.info(f"✅ User authenticated: {user.get('email')}")
         return user
 
-    except jwt.ExpiredSignatureError:
-        logger.error("❌ Token expired")
-        raise HTTPException(status_code=401, detail="Token expired")
-
-    except jwt.InvalidTokenError as e:
-        logger.error(f"❌ Invalid token: {str(e)}")
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    except Exception as e:
-        logger.error(f"❌ Auth error: {str(e)}")
-        raise HTTPException(status_code=401, detail="Authentication failed")
+    except HTTPException:
+        raise
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except Exception as exc:
+        logger.exception("Authentication failed: %s", exc)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed")
 
 
-# ✅ Require admin user
 async def require_admin_user(
-    authorization: str = Header(None),
-    db = Depends(get_db)   # 🚀 Proper dependency injection
+    authorization: str = Header(default=None),
+    db=Depends(get_db),
 ):
-    """Require admin user"""
-
-    # First validate user normally
     user = await get_current_user(authorization=authorization, db=db)
 
     if user.get("role") != "admin":
-        logger.error(f"❌ User {user.get('email')} is not admin")
-        raise HTTPException(
-            status_code=403,
-            detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    logger.info(f"✅ Admin authenticated: {user.get('email')}")
     return user
