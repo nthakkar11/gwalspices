@@ -1,0 +1,147 @@
+{
+  "brand_identity": {
+    "name": "GWAL Spices",
+    "core_values": ["Authenticity", "Premium Quality", "Heritage", "Modern Luxury"],
+    "persona": "The Royal Spice Merchant - Sophisticated, Warm, Trustworthy, deeply rooted in Indian culture but presenting to a global standard.",
+    "theme_strategy": "Royal Spice Dark (Primary) with Ivory Silk (Light Mode Toggle). The default experience is a rich, immersive dark mode that makes spice colors pop."
+  },
+  "typography": {
+    "font_families": {
+      "headings": "Playfair Display, serif",
+      "body": "Manrope, sans-serif",
+      "accent": "La Belle Aurore, cursive"
+    },
+    "weights": {
+      "headings": "font-bold (700) or font-black (900)",
+      "body": "font-normal (400) or font-medium (500)"
+    },
+    "rules": [
+      "Headings must use Playfair Display. Use tracking-tight for sizes above 32px.",
+      "Body text must use Manrope. Use leading-relaxed for readability.",
+      "Use 'La Belle Aurore' sparingly for 'handwritten' notes or organic touches (e.g., '100% Organic' labels).",
+      "Never use Inter for headings."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "primary": "#0F0F10",
+        "secondary": "#1A1A1A",
+        "card": "#18181B"
+      },
+      "text": {
+        "primary": "#F5F5F5",
+        "secondary": "#A1A1AA",
+        "muted": "#52525B"
+      },
+      "brand": {
+        "saffron": "#FF9933",
+        "chilli": "#E63946",
+        "turmeric": "#FFC000",
+        "cardamom": "#4F772D",
+        "gold": "#D4AF37"
+      },
+      "functional": {
+        "success": "#22C55E",
+        "error": "#EF4444",
+        "warning": "#F59E0B"
+      }
+    },
+    "usage": [
+      "Primary Background: #0F0F10 (Deep Charcoal) - Use for the main page body.",
+      "Primary CTA: #FF9933 (Saffron) or #D4AF37 (Gold) - High contrast against dark background.",
+      "Badges/Tags: Use #E63946 (Chilli) for 'Hot' or 'Sale' items.",
+      "Borders: Use #27272A (Zinc-800) for subtle separation. Never use pure white borders in dark mode."
+    ]
+  },
+  "layout_system": {
+    "grid_strategy": "Bento Grid (Mode A for Marketing, Mode B for Shop)",
+    "spacing": {
+      "container_padding": "px-4 md:px-8 lg:px-12",
+      "section_gap": "gap-16 or gap-24",
+      "element_gap": "gap-4 or gap-6"
+    },
+    "rules": [
+      "Use 'container mx-auto' for centering content but keep max-width constrained (max-w-7xl).",
+      "Mobile First: Always start with grid-cols-1.",
+      "Asymmetry: In the Hero section, use a 2/3 + 1/3 split or a complex grid to avoid boring symmetry."
+    ]
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-brand-saffron text-black font-bold hover:bg-brand-turmeric transition-all duration-300 rounded-none px-8 py-3 uppercase tracking-wider",
+      "secondary": "border border-white/20 text-white hover:bg-white/10 transition-all duration-300 rounded-none px-8 py-3 uppercase tracking-wider",
+      "ghost": "text-brand-saffron hover:text-brand-turmeric hover:underline underline-offset-4"
+    },
+    "cards": {
+      "product": "group relative bg-card border border-white/5 hover:border-brand-gold/30 transition-all duration-500 overflow-hidden rounded-sm",
+      "feature": "bg-transparent border border-white/10 p-8 hover:bg-white/5 transition-colors duration-300"
+    },
+    "inputs": {
+      "style": "bg-white/5 border-white/10 focus:border-brand-saffron text-white placeholder:text-white/30 rounded-sm h-12"
+    },
+    "navigation": {
+      "header": "fixed top-0 w-full z-50 backdrop-blur-xl bg-background/70 border-b border-white/5"
+    }
+  },
+  "assets": {
+    "hero_images": [
+      {
+        "url": "https://images.unsplash.com/photo-1663325265966-0d17de3e85c5?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Vibrant bowls of indian spices on dark background",
+        "category": "hero_main"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1556333867-75252ad6ed0e?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Indian chef cooking in rustic kitchen",
+        "category": "hero_secondary"
+      }
+    ],
+    "product_placeholders": [
+      {
+        "url": "https://images.unsplash.com/photo-1649450248424-440b9f33d140?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Premium glass jar with spices",
+        "category": "product_jar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1543463573-35e4afd0ab43?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Luxury jar packaging",
+        "category": "product_packaging"
+      }
+    ],
+    "textures": [
+      {
+        "url": "https://images.unsplash.com/photo-1674544037006-079e4c8ae387?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Turmeric powder texture",
+        "category": "texture_yellow"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1690460232677-155f01ad61ce?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Red chilli powder explosion",
+        "category": "texture_red"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1649951806971-ad0e00408773?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Black peppercorns macro",
+        "category": "texture_black"
+      }
+    ]
+  },
+  "motion": {
+    "library": "framer-motion",
+    "guidelines": [
+      "Use 'AnimatePresence' for page transitions.",
+      "Product cards should have a subtle 'y-axis' lift on hover (-4px).",
+      "Hero text should stagger in (0.1s delay per line).",
+      "Use 'easeOut' curves, avoid linear animations."
+    ]
+  },
+  "universal_guidelines": [
+    "Do not use gradients for the main background. Use solid #0F0F10.",
+    "Do not use rounded-xl or rounded-2xl. Stick to rounded-none or rounded-sm for a premium, sharp look.",
+    "Ensure all text has sufficient contrast. Use #F5F5F5 for main text, not #FFFFFF (too harsh) or #888888 (too low).",
+    "Use 'data-testid' on all interactive elements.",
+    "Images must be high quality. If an image fails to load, have a graceful fallback color (e.g., bg-zinc-900)."
+  ],
+  "instructions_to_main_agent": "You are building the frontend for GWAL Spices. Use the assets provided above. Implement the 'Royal Spice Dark' theme. Use Shadcn for complex interactive components (Cart, Checkout) but style them to match the dark theme (override default white backgrounds). For the Landing Page, build custom layouts using the Bento Grid strategy. Ensure the 'Add to Cart' flow is smooth and provides visual feedback."
+}

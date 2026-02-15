@@ -1,0 +1,11 @@
+IMPORTANT (Production Hardening Note 🔔)
+
+(As per your preference, I’ll remind you)
+
+📝 Production note to track later:
+
+Admin auth is still Bearer admin-token
+
+Needs JWT + role-based access before launch
+
+👉 Please note this somewhere (we’ll fix it later).
