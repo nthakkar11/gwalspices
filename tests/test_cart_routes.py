@@ -40,8 +40,8 @@ class FakeDB:
         self.carts = FakeCollection()
         self.variants = FakeCollection(
             docs=[
-                {"id": "variant-1", "is_active": True, "in_stock": True},
-                {"id": "variant-2", "is_active": True, "in_stock": True},
+                {"id": "variant-1", "is_active": True, "in_stock": True, "selling_price": 10},
+                {"id": "variant-2", "is_active": True, "in_stock": True, "selling_price": 20},
             ]
         )
 
@@ -86,7 +86,7 @@ def test_cart_isolated_per_authenticated_user(app, fake_db):
     app.dependency_overrides[get_current_user] = user_2
     response = client.get("/cart/")
     assert response.status_code == 200
-    assert response.json() == {"items": [], "coupon_code": None}
+    assert response.json() == {"items": [], "total": 0.0, "coupon_code": None}
 
     assert len(fake_db.carts.docs) == 1
     assert fake_db.carts.docs[0]["user_id"] == "user-1"
@@ -139,3 +139,18 @@ def test_update_quantity_returns_detailed_error_for_missing_variant(app, fake_db
         "variant_id": "variant-2",
         "user_id": "user-1",
     }
+
+
+def test_add_to_cart_rejects_invalid_quantity(app):
+    async def user_1():
+        return {"id": "user-1", "email": "user1@example.com"}
+
+    app.dependency_overrides[get_current_user] = user_1
+    client = TestClient(app)
+    response = client.post(
+        "/cart/add",
+        json={"variant_id": "variant-1", "product_id": "product-1", "quantity": 0},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "INVALID_QUANTITY"

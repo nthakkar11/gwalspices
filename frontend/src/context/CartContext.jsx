@@ -10,14 +10,21 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [cart, setCart] = useState([]);
+  const [cartTotal, setCartTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const loadCart = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setCart([]);
+      setCartTotal(0);
+      setLoading(false);
+      return;
+    }
 
     try {
-      const res = await api.get('/cart');
+      const res = await api.get('/cart/');
       setCart(res.data.items || []);
+      setCartTotal(res.data.total || 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -34,13 +41,13 @@ export const CartProvider = ({ children }) => {
       await api.post('/cart/add', {
         variant_id: variantId,
         product_id: productId,
-        quantity
+        quantity,
       });
-
       await loadCart();
-      toast.success("Added to cart");
+      toast.success('Added to cart');
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed");
+      toast.error(err.response?.data?.detail?.message || err.response?.data?.detail || 'Failed');
+      throw err;
     }
   };
 
@@ -49,28 +56,32 @@ export const CartProvider = ({ children }) => {
     await loadCart();
   };
 
-  const updateQuantity = async (variantId, quantity) => {
+  const updateQuantity = async (variantId, quantity, productId = '') => {
     await api.put('/cart/update', {
       variant_id: variantId,
-      quantity
+      product_id: productId,
+      quantity,
     });
     await loadCart();
   };
 
   const clearCart = async () => {
-    await api.delete('/cart');
+    await api.delete('/cart/');
     setCart([]);
+    setCartTotal(0);
   };
 
   return (
     <CartContext.Provider
       value={{
         cart,
+        cartTotal,
         loading,
         addToCart,
         removeFromCart,
         updateQuantity,
-        clearCart
+        clearCart,
+        reloadCart: loadCart,
       }}
     >
       {children}

@@ -10,7 +10,7 @@ from pathlib import Path
 from db import client
 
 # ROUTES
-from routes import auth, products, coupons, orders, admin, admin_products, contact, gokwik, cart
+from routes import auth, products, coupons, orders, admin, admin_products, contact, gokwik, cart, payment
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -36,6 +36,7 @@ api_router.include_router(coupons.router)
 api_router.include_router(orders.router)
 api_router.include_router(gokwik.router)
 api_router.include_router(cart.router)
+api_router.include_router(payment.router)
 
 # ADMIN
 api_router.include_router(admin_products.router)
@@ -60,3 +61,10 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+@app.on_event("startup")
+async def startup_indexes():
+    from db import db
+    await db.carts.create_index("user_id", unique=True, name="idx_carts_user_id")
+

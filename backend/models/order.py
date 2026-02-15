@@ -95,3 +95,14 @@ class OrderResponse(BaseModel):
     created_at: str
     updated_at: str
     order_history: List[OrderHistory]
+
+class InitiateOrderRequest(BaseModel):
+    payment_method: str = "PREPAID"
+    coupon_code: Optional[str] = None
+
+
+class InitiateOrderResponse(BaseModel):
+    order_id: str
+    total_amount: float
+    checkout_url: Optional[str] = None
+

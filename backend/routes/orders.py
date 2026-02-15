@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Header, Query
+from fastapi import APIRouter, HTTPException, Depends, Header, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from models.order import CreateOrderRequest, OrderResponse, VerifyPaymentRequest, UpdateOrderStatusRequest
+from models.order import CreateOrderRequest, OrderResponse, VerifyPaymentRequest, UpdateOrderStatusRequest, InitiateOrderRequest
 from utils.gokwik_client import create_gokwik_order
 from utils.email_service import send_order_confirmation, send_order_status_update, send_admin_order_notification
 from utils.invoice_generator import generate_invoice
@@ -21,7 +21,7 @@ async def get_db():
     from db import db
     return db
 
-async def get_current_user_dep(authorization: str = None):
+async def get_current_user_dep(authorization: str = Header(None)):
     from middleware.auth_middleware import get_current_user
     from db import db
     return await get_current_user(authorization, db)
@@ -31,6 +31,109 @@ async def require_admin_user(authorization: str, db):
     return await require_admin_user(authorization, db)
 
 
+
+
+async def _calculate_order_total_from_cart(db, cart_items: list[dict]) -> tuple[list[dict], float]:
+    order_items = []
+    total = 0.0
+
+    for item in cart_items:
+        qty = int(item.get("quantity", 0))
+        if qty <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Cart contains invalid quantity.", "code": "INVALID_CART_QUANTITY", "variant_id": item.get("variant_id")},
+            )
+
+        variant = await db.variants.find_one(
+            {"id": item.get("variant_id"), "is_active": True, "in_stock": True},
+            {"_id": 0, "id": 1, "product_id": 1, "selling_price": 1},
+        )
+        if not variant:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"message": "Variant unavailable in cart.", "code": "VARIANT_UNAVAILABLE", "variant_id": item.get("variant_id")},
+            )
+
+        line_total = round(float(variant.get("selling_price", 0)) * qty, 2)
+        total += line_total
+        order_items.append({
+            "variant_id": variant["id"],
+            "product_id": variant.get("product_id"),
+            "quantity": qty,
+            "price": float(variant.get("selling_price", 0)),
+            "total": line_total,
+        })
+
+    return order_items, round(total, 2)
+
+
+@router.post("/initiate")
+async def initiate_order(
+    request: InitiateOrderRequest,
+    user: dict = Depends(get_current_user_dep),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Initiate order from authenticated user's cart and optionally create GoKwik checkout session."""
+
+    cart = await db.carts.find_one({"user_id": user["id"]}, {"_id": 0})
+    if not cart or not cart.get("items"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": "Cart is empty.", "code": "CART_EMPTY"},
+        )
+
+    order_items, total_amount = await _calculate_order_total_from_cart(db, cart.get("items", []))
+    payment_method = (request.payment_method or "PREPAID").upper()
+    if payment_method not in {"PREPAID", "COD"}:
+        raise HTTPException(status_code=400, detail={"message": "Invalid payment method.", "code": "INVALID_PAYMENT_METHOD"})
+
+    now = datetime.now(timezone.utc).isoformat()
+    order_id = str(uuid.uuid4())
+
+    order_doc = {
+        "id": order_id,
+        "user_id": user["id"],
+        "items": order_items,
+        "total_amount": total_amount,
+        "coupon_code": request.coupon_code,
+        "payment_method": payment_method,
+        "payment_status": "PENDING",
+        "order_status": "CREATED",
+        "created_at": now,
+        "updated_at": now,
+        "gokwik_order_id": None,
+    }
+
+    checkout_url = None
+    if payment_method == "PREPAID":
+        customer = {
+            "user_id": user["id"],
+            "name": user.get("full_name") or user.get("name") or user.get("email", ""),
+            "email": user.get("email", ""),
+            "phone": user.get("phone", ""),
+        }
+        gokwik_response = create_gokwik_order(
+            order_id=order_id,
+            order_number=order_id,
+            amount=total_amount,
+            customer_details=customer,
+            billing_address={},
+            shipping_address={},
+            cart_items=order_items,
+        )
+        if not gokwik_response.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"message": gokwik_response.get("error", "Unable to create GoKwik order."), "code": "GOKWIK_CREATE_FAILED"},
+            )
+        order_doc["gokwik_order_id"] = gokwik_response.get("gokwik_order_id")
+        checkout_url = gokwik_response.get("checkout_url")
+
+    await db.orders.insert_one(order_doc)
+    await db.carts.delete_one({"user_id": user["id"]})
+
+    return {"order_id": order_id, "total_amount": total_amount, "checkout_url": checkout_url}
 # ============================
 # CUSTOMER ORDER CREATION
 # ============================
