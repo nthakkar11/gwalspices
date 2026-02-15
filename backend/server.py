@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from routes.checkout import router as checkout_router
+from pymongo.errors import OperationFailure
 
 import os
 import logging
@@ -58,13 +59,36 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
 
 
+async def _ensure_cart_user_index(db):
+    """
+    Create a unique index on carts.user_id if one does not already exist.
+
+    If an equivalent key-pattern index already exists under a different name
+    (e.g. MongoDB default `user_id_1`), skip creation to keep startup idempotent.
+    """
+    existing_indexes = await db.carts.index_information()
+
+    for _, meta in existing_indexes.items():
+        if meta.get("key") == [("user_id", 1)]:
+            return
+
+    try:
+        await db.carts.create_index("user_id", unique=True, name="idx_carts_user_id")
+    except OperationFailure as exc:
+        if exc.code == 85:
+            logger.warning("Cart user_id index already exists with different name; skipping creation.")
+            return
+        raise
+
+
 @app.on_event("startup")
 async def startup_indexes():
     from db import db
-    await db.carts.create_index("user_id", unique=True, name="idx_carts_user_id")
 
+    await _ensure_cart_user_index(db)

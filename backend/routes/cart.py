@@ -165,17 +165,6 @@ async def remove_item(variant_id: str, user: dict = Depends(get_current_user), d
             },
         )
 
-    if len(items) == len(cart.get("items", [])):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "message": "Variant not found in the authenticated user's cart.",
-                "code": "CART_ITEM_NOT_FOUND",
-                "variant_id": variant_id,
-                "user_id": user_id,
-            },
-        )
-
     await db.carts.update_one(
         {"user_id": user_id},
         {"$set": {"items": items, "updated_at": datetime.utcnow().isoformat()}},
