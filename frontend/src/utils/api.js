@@ -12,7 +12,6 @@ const api = axios.create({
   },
 });
 
-// Attach JWT token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -21,17 +20,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Logout ONLY if /auth/me fails
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || '';
 
-    if (status === 401 && url.includes('/auth/me')) {
+    const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/register');
+    if (status === 401 && !isAuthRoute) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
 
     return Promise.reject(error);

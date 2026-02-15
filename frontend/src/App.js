@@ -19,7 +19,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MyOrders from './pages/MyOrders';
 import Profile from './pages/Profile';
-import Review from './pages/Review';
+import ReviewPage from './pages/ReviewPage';
 import OrderSuccess from './pages/OrderSuccess';
 import PaymentFailed from './pages/PaymentFailed';
 
@@ -66,7 +66,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/my-orders" element={<MyOrders />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/review" element={<Review />} />
+                <Route path="/review" element={<ReviewPage />} />
                 <Route path="/order-success/:orderId" element={<OrderSuccess />} />
                 <Route path="/payment-failed/:orderId" element={<PaymentFailed />} />
                 <Route path="/gokwik-checkout" element={<GokwikCheckout />} />
